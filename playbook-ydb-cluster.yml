@@ -5,4 +5,3 @@
 
   roles:
     - role: create-ydb-cluster
-      # tags: etcd
