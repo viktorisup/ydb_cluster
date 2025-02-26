@@ -1,0 +1,136 @@
+---
+- name: "Create ca_key"
+  openssl_privatekey:
+    path: "{{ work_dirs.certs }}/ca.key"
+    size: 2048
+    type: RSA
+    mode: '0600'
+    owner: ydb
+    group: ydb
+  when: "inventory_hostname == groups['ydb_cluster'][0]"
+
+- name: "Create CSR request"
+  openssl_csr:
+    path: "{{ work_dirs.certs }}/ca.csr"
+    privatekey_path: "{{ work_dirs.certs }}/ca.key"
+    common_name: "Ydb Root CA"
+    organization_name: "CBT"
+    country_name: "RU"
+    state_or_province_name: "Moscow"
+    locality_name: "Moscow"
+    key_usage:
+      - digitalSignature
+      - nonRepudiation
+      - keyEncipherment
+      - keyCertSign
+    basic_constraints:
+      - "CA:TRUE"
+    digest: sha256
+    mode: "0600"
+    owner: ydb
+    group: ydb
+  when: "inventory_hostname == groups['ydb_cluster'][0]"
+
+- name: "Create ca_crt"
+  openssl_certificate:
+    path: "{{ work_dirs.certs }}/ca.crt"
+    privatekey_path: "{{ work_dirs.certs }}/ca.key"
+    csr_path: "{{ work_dirs.certs }}/ca.csr"
+    provider: selfsigned
+    selfsigned_not_before: '202502010000Z'
+    selfsigned_not_after: '202602010000Z'
+    mode: '0644'
+    owner: ydb
+    group: ydb
+  when: "inventory_hostname == groups['ydb_cluster'][0]"
+
+- name: "Get ca and ca.key"
+  fetch:
+    src: "{{ item }}"
+    dest: "/tmp/"
+    flat: yes
+  loop:
+    - "{{ work_dirs.certs }}/ca.crt"
+    - "{{ work_dirs.certs }}/ca.key"
+  when: "inventory_hostname == groups['ydb_cluster'][0]"
+
+- name: "Copy ca and ca.key"
+  copy:
+    src: /tmp/{{ item }}
+    dest: "{{ work_dirs.certs }}/{{ item }}"
+    mode: "{{ '0600' if item == 'ca.key' else '0644' }}"
+    owner: ydb
+    group: ydb
+  loop:
+    - "ca.crt"
+    - "ca.key"
+
+- name: "Create client key"
+  openssl_privatekey:
+    path: "{{ work_dirs.certs }}/{{ ansible_hostname }}.key"
+    size: 2048
+    type: RSA
+    mode: "0600"
+    owner: ydb
+    group: ydb
+
+- name: "Create CSR client request"
+  openssl_csr:
+    path: "{{ work_dirs.certs }}/{{ ansible_hostname }}.csr"
+    privatekey_path: "{{ work_dirs.certs }}/{{ ansible_hostname }}.key"
+    common_name: "{{ ansible_hostname }}"
+    organization_name: "CBT"
+    country_name: "RU"
+    state_or_province_name: "Moscow"
+    locality_name: "Moscow"
+    key_usage:
+      - digitalSignature
+      - keyEncipherment
+    extended_key_usage:
+      - serverAuth
+      - clientAuth
+    subject_alt_name:
+      - "DNS:{{ ansible_hostname }}"
+    digest: sha256
+    mode: "0600"
+    owner: ydb
+    group: ydb
+
+- name: "Signing client certificates"
+  openssl_certificate:
+    path: "{{ work_dirs.certs }}/{{ ansible_hostname }}.crt"
+    csr_path: "{{ work_dirs.certs }}/{{ ansible_hostname }}.csr"
+    ownca_path: "{{ work_dirs.certs }}/ca.crt"
+    ownca_privatekey_path: "{{ work_dirs.certs }}/ca.key"
+    provider: ownca
+    ownca_not_before: '202502010000Z'
+    ownca_not_after: '202602010000Z'
+    mode: "0644"
+    owner: ydb
+    group: ydb
+
+- name: "Read privat key"
+  slurp:
+    src: "{{ work_dirs.certs }}/{{ ansible_hostname }}.key"
+  register: host_key
+
+- name: "Read host cert"
+  slurp:
+    src: "{{ work_dirs.certs }}/{{ ansible_hostname }}.crt"
+  register: host_cert
+
+- name: "Read CA"
+  slurp:
+    src: "{{ work_dirs.certs }}/ca.crt"
+  register: ca_cert
+
+- name: "Create pem"
+  copy:
+    dest: "{{ work_dirs.certs }}/web.pem"
+    content: |
+      {{ host_key.content | b64decode }}
+      {{ host_cert.content | b64decode }}
+      {{ ca_cert.content | b64decode }}
+    mode: "0600"
+    owner: ydb
+    group: ydb

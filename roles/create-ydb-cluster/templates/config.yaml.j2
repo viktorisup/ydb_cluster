@@ -1,0 +1,125 @@
+static_erasure: mirror-3-dc
+host_configs:
+- host_config_id: 1
+  drive:
+{% for disk1 in ydb_settings.disk %}
+  - path: /dev/disk/by-partlabel/{{ disk1.name_partition }}
+    type: SSD
+{% endfor%}
+
+hosts:
+{% for host1 in groups['ydb_cluster'] %}
+- host: {{ hostvars[host1]['ansible_hostname'] }}
+  host_config_id: 1
+  node_id: {{ hostvars[host1]["node_id"] }}
+  port: 19001
+  location:
+    data_center: '{{ hostvars[host1]["data_center"] }}'
+    rack: '{{ hostvars[host1]["rack"] }}'
+{% endfor%}
+domains_config:
+  domain:
+  - name: Root
+    storage_pool_types:
+    - kind: ssd
+      pool_config:
+        box_id: 1
+        erasure_species: mirror-3-dc
+        kind: ssd
+        geometry:
+          realm_level_begin: 10
+          realm_level_end: 20
+          domain_level_begin: 10
+          domain_level_end: 256
+        pdisk_filter:
+        - property:
+          - type: SSD  # device type to match host_configs.drive.type
+        vdisk_kind: Default
+  state_storage:
+  - ring:
+      node: [1, 2, 3]
+      nto_select: 3
+    ssid: 1
+
+# auth_config:
+#   ldap_authentication:
+#     hosts:
+#       - "{{ freeipa_settings.host}}"
+#     port: {{ freeipa_settings.port}}
+#     base_dn: "{{ freeipa_settings.base_dn}}"
+#     bind_dn: "{{ freeipa_settings.bind_dn}}"
+#     bind_password: "{{ freeipa_settings.bind_password}}"
+#     search_filter: "{{ freeipa_settings.search_filter}}"
+#     use_tls:
+#       enable: {{ freeipa_settings.use_tls}}
+#       ca_cert_file: "{{ freeipa_settings.ca_cert_file}}"
+#       cert_require: DEMAND
+#   ldap_authentication_domain: "ldap"
+#   refresh_time: "{{ freeipa_settings.refresh_time}}"
+
+table_service_config:
+  sql_version: 1
+actor_system_config:          # the configuration of the actor system which descibes how cores of the instance are distributed
+  executor:                   # accross different types of workloads in the instance.
+  - name: System              # system executor of the actor system. in this executor YDB launches system type of workloads, like system tablets
+    threads: 2                # the number of threads allocated to system executor.
+    type: BASIC
+  - name: User                # user executor of the actor system. In this executor YDB launches user workloads, like datashard activities,
+    threads: 3                # the number of threads allocated to user executor.
+    type: BASIC
+  - name: Batch               # user executor of the actor system. In this executor YDB launches batch operations, like scan queries, table
+    threads: 2                # the number of threads allocated to the batch executor.
+    type: BASIC
+  - name: IO                  # the io executor. In this executor launches sync operations and writes logs.
+    threads: 1
+    time_per_mailbox_micro_secs: 100
+    type: IO
+  - name: IC                  # the interconnect executor which YDB uses for network communications accross different nodes of the cluster.
+    spin_threshold: 10
+    threads: 1                # the number of threads allocated to the interconnect executor.
+    time_per_mailbox_micro_secs: 100
+    type: BASIC
+  scheduler:
+    progress_threshold: 10000
+    resolution: 256
+    spin_threshold: 0
+blob_storage_config:
+  service_set:
+    groups:
+    - erasure_species: mirror-3-dc # fault tolerance mode name for the static group
+      rings:          # in mirror-3-dc must have exactly 3 rings or availability zones
+{% for host2 in groups['ydb_cluster'] %}
+      - fail_domains:
+{% for disk2 in ydb_settings.disk %}
+        - vdisk_locations:
+          - node_id: {{ hostvars[host2]['ansible_hostname'] }}
+            pdisk_category: SSD
+            path: /dev/disk/by-partlabel/{{ disk2.name_partition}}
+{% endfor %}
+{% endfor %}
+
+channel_profile_config:
+  profile:
+  - channel:
+    - erasure_species: mirror-3-dc
+      pdisk_category: 0
+      storage_pool_kind: ssd
+    - erasure_species: mirror-3-dc
+      pdisk_category: 0
+      storage_pool_kind: ssd
+    - erasure_species: mirror-3-dc
+      pdisk_category: 0
+      storage_pool_kind: ssd
+    profile_id: 0
+interconnect_config:
+    start_tcp: true
+    encryption_mode: OPTIONAL
+    path_to_certificate_file: "{{ work_dirs.certs }}/{{ ansible_hostname}}.crt"
+    path_to_private_key_file: "{{ work_dirs.certs }}/{{ ansible_hostname}}.key"
+    path_to_ca_file: "{{ work_dirs.certs }}/ca.crt"
+grpc_config:
+    cert: "{{ work_dirs.certs }}/{{ ansible_hostname}}.crt"
+    key: "{{ work_dirs.certs }}/{{ ansible_hostname}}.key"
+    ca: "{{ work_dirs.certs }}/ca.crt"
+    services_enabled:
+    - legacy

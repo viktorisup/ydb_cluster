@@ -1,0 +1,8 @@
+- name: Deploying ydb cluster
+  hosts: all
+  gather_facts: true
+  become: true
+
+  roles:
+    - role: create-ydb-cluster
+      # tags: etcd

@@ -1,0 +1,16 @@
+- name: "Create a new GPT partition table"
+  community.general.parted:
+    device: /dev/{{ item.name }}
+    state: present
+    number: 1
+    label: "gpt"
+    name: "{{ item.name_partition }}"
+  loop: "{{ ydb_settings.disk }}"
+
+- name: "Update partition"
+  shell: "partx -u /dev/{{ item.name }}"
+  loop: "{{ ydb_settings.disk }}"
+
+- name: "Formated partition"
+  shell: "LD_LIBRARY_PATH={{ work_dirs.current }}/lib {{ work_dirs.current }}/bin/ydbd admin bs disk obliterate /dev/disk/by-partlabel/{{item.name_partition}}"
+  loop: "{{ ydb_settings.disk }}"

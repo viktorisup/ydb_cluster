@@ -1,0 +1,25 @@
+[Unit]
+Description=YDB storage node
+After=network-online.target rc-local.service
+Wants=network-online.target
+StartLimitInterval=10
+StartLimitBurst=15
+
+[Service]
+Restart=always
+RestartSec=1
+User=ydb
+PermissionsStartOnly=true
+StandardOutput=append:{{ work_dirs.log_dir }}/ydb.log
+StandardError=append:{{ work_dirs.log_dir }}/ydb.err.log
+Environment=LD_LIBRARY_PATH={{ work_dirs.current }}/lib
+ExecStart={{ work_dirs.current }}/bin/ydbd server --log-level 8 --syslog --tcp \
+    --yaml-config  {{ work_dirs.current }}/cfg/config.yaml \
+    --grpcs-port 2135 --ic-port 19001 --mon-port 8765 \
+    --mon-cert {{ work_dirs.certs }}/web.pem --node static
+LimitNOFILE=65536
+LimitCORE=0
+LimitMEMLOCK=3221225472
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,42 @@
+---
+ydb_settings:
+  version: "24.3.15.5"
+  disk:  # указываем название ваших дисков
+    - name: "sdb"
+      name_partition: "ydb_disk_ssd_01" # произвольное название уникальное в рамках одной ноды
+    - name: "sdc"
+      name_partition: "ydb_disk_ssd_02" # произвольное название уникальное в рамках одной ноды
+    - name: "sdd"
+      name_partition: "ydb_disk_ssd_03" # произвольное название уникальное в рамках одной ноды
+  name_db: 'newdb2'
+  root_password: "123456!@"
+
+ydb_cli_settings:
+  version: "2.19.0"
+  bin_dir: "/usr/local/bin"
+
+freeipa_settings: #ldap
+  host: t01ipa01.freeipa.local
+  port: 398
+  base_dn: "cn=users,cn=accounts,dc=freeipa,dc=local"
+  bind_dn: "uid=admin,cn=users,cn=accounts,dc=freeipa,dc=local"
+  bind_password: "passwd123"
+  search_filter: "uid=$username"
+  use_tls: true
+  ca_cert_file: "/opt/ydb/certs/freeipa.crt"
+  refresh_time: "1h"
+
+
+base_dir: "/opt/ydb"
+
+work_dirs:
+  download: "/temp/download"
+  versions: "{{ base_dir }}/versions/{{ ydb_settings.version }}"
+  current: "{{ base_dir }}/current"
+  config: "{{ base_dir }}/versions/{{ ydb_settings.version }}/cfg"
+  certs: "{{ base_dir }}/certs"
+  log_dir: "/var/log/ydb"
+
+app_list:
+  - { name: "ydb_cli", url: "https://storage.yandexcloud.net/yandexcloud-ydb/release/{{ ydb_cli_settings.version }}/linux/amd64/ydb" }
+  - { name: "ydb_server", url: "https://binaries.ydb.tech/release/{{ ydb_settings.version }}/ydbd-{{ ydb_settings.version }}-linux-amd64.tar.gz" }

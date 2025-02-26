@@ -1,0 +1,31 @@
+[Unit]
+Description=YDB db dynamic node
+After=network-online.target rc-local.service
+Wants=network-online.target
+StartLimitInterval=10
+StartLimitBurst=15
+
+[Service]
+Restart=always
+RestartSec=1
+User=ydb
+PermissionsStartOnly=true
+StandardOutput=append:{{ work_dirs.log_dir }}/ydb-db.log
+StandardError=append:{{ work_dirs.log_dir }}/ydb-db.err.log
+Environment=LD_LIBRARY_PATH={{ work_dirs.current }}/lib
+ExecStart={{ work_dirs.current }}/bin/ydbd server \
+    --grpcs-port 2136 --grpc-ca {{ work_dirs.certs }}/ca.crt \
+    --ic-port 19002 --ca {{ work_dirs.certs }}/ca.crt \
+    --mon-port 8766 --mon-cert {{ work_dirs.certs }}/web.pem \
+    --yaml-config  {{ work_dirs.current }}/cfg/config.yaml --tenant /Root/{{ ydb_settings.name_db}} \
+{% for host3 in groups['ydb_cluster'] %}
+    --node-broker grpcs://{{ hostvars[host3]['ansible_hostname']}}:2135{% if not loop.last %} \
+{% endif %}
+{% endfor%}
+
+LimitNOFILE=65536
+LimitCORE=0
+LimitMEMLOCK=32212254720
+
+[Install]
+WantedBy=multi-user.target
