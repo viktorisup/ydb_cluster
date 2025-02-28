@@ -2,112 +2,112 @@
 - name: "Create user and group"
   import_tasks: "initial.yml"
 
-# - name: "Install packages"
-#   dnf:
-#     name:
-#       - openssl
-#       - python3-cryptography
-#     state: present
-#     update_cache: yes
+- name: "Install packages"
+  dnf:
+    name:
+      - openssl
+      - python3-cryptography
+    state: present
+    update_cache: yes
 
-# - name: "Create dir from apps"
-#   file:
-#     path: "{{ item.value }}"
-#     state: directory
-#     owner: "{{ ydb_settings.app_user }}"
-#     group: "{{ ydb_settings.app_group }}"
-#   with_dict: "{{ work_dirs }}"
+- name: "Create dir from apps"
+  file:
+    path: "{{ item.value }}"
+    state: directory
+    owner: "{{ ydb_settings.app_user }}"
+    group: "{{ ydb_settings.app_group }}"
+  with_dict: "{{ work_dirs }}"
 
-# - name: "Create cert chain"
-#   import_tasks: "create_certificates.yml"
+- name: "Create cert chain"
+  import_tasks: "create_certificates.yml"
 
-# - name: "Change owner"
-#   file:
-#     path: "{{ work_dirs.certs }}"
-#     owner: "{{ ydb_settings.app_user }}"
-#     group: "{{ ydb_settings.app_group }}"
-#     mode: '0700'
+- name: "Change owner"
+  file:
+    path: "{{ work_dirs.certs }}"
+    owner: "{{ ydb_settings.app_user }}"
+    group: "{{ ydb_settings.app_group }}"
+    mode: '0700'
 
-# - name: "Download apps"
-#   get_url:
-#     url: "{{ item.url }}"
-#     dest: "{{ work_dirs.download }}"
-#   loop: "{{ app_list }}"
+- name: "Download apps"
+  get_url:
+    url: "{{ item.url }}"
+    dest: "{{ work_dirs.download }}"
+  loop: "{{ app_list }}"
 
-# - name: "Extract tar file"
-#   unarchive:
-#     src: "{{ work_dirs.download }}/ydbd-{{ ydb_settings.version }}-linux-amd64.tar.gz"
-#     dest: "{{ work_dirs.versions }}"
-#     remote_src: yes
+- name: "Extract tar file"
+  unarchive:
+    src: "{{ work_dirs.download }}/ydbd-{{ ydb_settings.version }}-linux-amd64.tar.gz"
+    dest: "{{ work_dirs.versions }}"
+    remote_src: yes
 
-# - name: "Copy bin ydb-cli"
-#   copy:
-#     src: "{{ work_dirs.download }}/ydb"
-#     dest: "{{ ydb_cli_settings.bin_dir }}/ydb"
-#     mode: '+x'
-#     remote_src: yes
+- name: "Copy bin ydb-cli"
+  copy:
+    src: "{{ work_dirs.download }}/ydb"
+    dest: "{{ ydb_cli_settings.bin_dir }}/ydb"
+    mode: '+x'
+    remote_src: yes
 
-# - name: "Create link to the current version"
-#   file:
-#     src: "{{ item }}"
-#     dest: "{{ work_dirs.current }}/{{ item | basename }}"
-#     state: link
-#     force: true
-#   loop:
-#     - "{{ work_dirs.versions }}/ydbd-{{ ydb_settings.version }}-linux-amd64/bin"
-#     - "{{ work_dirs.versions }}/ydbd-{{ ydb_settings.version }}-linux-amd64/lib"
-#     - "{{ work_dirs.config }}"
+- name: "Create link to the current version"
+  file:
+    src: "{{ item }}"
+    dest: "{{ work_dirs.current }}/{{ item | basename }}"
+    state: link
+    force: true
+  loop:
+    - "{{ work_dirs.versions }}/ydbd-{{ ydb_settings.version }}-linux-amd64/bin"
+    - "{{ work_dirs.versions }}/ydbd-{{ ydb_settings.version }}-linux-amd64/lib"
+    - "{{ work_dirs.config }}"
 
-# - name: "Partition disks"
-#   import_tasks: parted_disk.yml
+- name: "Partition disks"
+  import_tasks: parted_disk.yml
 
-# - name: "Copy config"
-#   template: 
-#     src: "config.yaml.j2"
-#     dest: "{{ work_dirs.config }}/config.yaml"
-#     owner: "{{ ydb_settings.app_user }}"
-#     group: "{{ ydb_settings.app_group }}"
+- name: "Copy config"
+  template: 
+    src: "config.yaml.j2"
+    dest: "{{ work_dirs.config }}/config.yaml"
+    owner: "{{ ydb_settings.app_user }}"
+    group: "{{ ydb_settings.app_group }}"
 
-# - name: "Copy service"
-#   template:
-#     src: "{{ item }}.service.j2"
-#     dest: "/etc/systemd/system/{{ item }}.service"
-#   loop:
-#     - "ydbd-storage"
-#     - "ydbd-db"
+- name: "Copy service"
+  template:
+    src: "{{ item }}.service.j2"
+    dest: "/etc/systemd/system/{{ item }}.service"
+  loop:
+    - "ydbd-storage"
+    - "ydbd-db"
     
-# - name: "Restart ydbd-storage.service"
-#   systemd_service:
-#     name: "ydbd-storage.service"
-#     state: restarted
-#     enabled: true
-#     daemon_reload: true
-#   register: service_status
+- name: "Restart ydbd-storage.service"
+  systemd_service:
+    name: "ydbd-storage.service"
+    state: restarted
+    enabled: true
+    daemon_reload: true
+  register: service_status
 
-# - name: "Init cluster"
-#   shell: |
-#     export LD_LIBRARY_PATH={{ work_dirs.current }}/lib
-#     {{ work_dirs.current }}/bin/ydbd --ca-file {{ work_dirs.certs }}/ca.crt -s grpcs://{{ansible_hostname}}:2135 \
-#     admin blobstorage config init --yaml-file {{ work_dirs.current }}/cfg/config.yaml
-#   when: "inventory_hostname == groups['ydb_cluster'][0]"
+- name: "Init cluster"
+  shell: |
+    export LD_LIBRARY_PATH={{ work_dirs.current }}/lib
+    {{ work_dirs.current }}/bin/ydbd --ca-file {{ work_dirs.certs }}/ca.crt -s grpcs://{{ansible_hostname}}:2135 \
+    admin blobstorage config init --yaml-file {{ work_dirs.current }}/cfg/config.yaml
+  when: "inventory_hostname == groups['ydb_cluster'][0]"
 
-# - name: "Create database"
-#   shell: |
-#     export LD_LIBRARY_PATH={{ work_dirs.current }}/lib
-#     {{ work_dirs.current }}/bin/ydbd --ca-file {{ work_dirs.certs }}/ca.crt -s grpcs://{{ansible_hostname}}:2135 \
-#     admin database /Root/{{ ydb_settings.name_db}} create ssd:1
-#   when: "inventory_hostname == groups['ydb_cluster'][0]"
+- name: "Create database"
+  shell: |
+    export LD_LIBRARY_PATH={{ work_dirs.current }}/lib
+    {{ work_dirs.current }}/bin/ydbd --ca-file {{ work_dirs.certs }}/ca.crt -s grpcs://{{ansible_hostname}}:2135 \
+    admin database /Root/{{ ydb_settings.name_db}} create ssd:1
+  when: "inventory_hostname == groups['ydb_cluster'][0]"
 
-# - name: "Restart ydbd-db.service"
-#   systemd_service:
-#     name: "ydbd-db.service"
-#     state: restarted
-#     enabled: true
-#     daemon_reload: true
-#   register: service_status
+- name: "Restart ydbd-db.service"
+  systemd_service:
+    name: "ydbd-db.service"
+    state: restarted
+    enabled: true
+    daemon_reload: true
+  register: service_status
 
-# - name: "Set root password"
-#   shell: |
-#     ydb --ca-file {{ work_dirs.certs }}/ca.crt -e grpcs://{{ansible_hostname}}:2136 -d /Root/{{ ydb_settings.name_db}} --user root --no-password \
-#     yql -s 'ALTER USER root PASSWORD "{{ ydb_settings.root_password }}"'
-#   when: "inventory_hostname == groups['ydb_cluster'][0]"
+- name: "Set root password"
+  shell: |
+    ydb --ca-file {{ work_dirs.certs }}/ca.crt -e grpcs://{{ansible_hostname}}:2136 -d /Root/{{ ydb_settings.name_db}} --user root --no-password \
+    yql -s 'ALTER USER root PASSWORD "{{ ydb_settings.root_password }}"'
+  when: "inventory_hostname == groups['ydb_cluster'][0]"
