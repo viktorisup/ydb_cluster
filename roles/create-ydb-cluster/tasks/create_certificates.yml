@@ -5,8 +5,8 @@
     size: 2048
     type: RSA
     mode: '0600'
-    owner: ydb
-    group: ydb
+    owner: "{{ ydb_settings.app_user }}"
+    group: "{{ ydb_settings.app_group }}"
   when: "inventory_hostname == groups['ydb_cluster'][0]"
 
 - name: "Create CSR request"
@@ -27,8 +27,8 @@
       - "CA:TRUE"
     digest: sha256
     mode: "0600"
-    owner: ydb
-    group: ydb
+    owner: "{{ ydb_settings.app_user }}"
+    group: "{{ ydb_settings.app_group }}"
   when: "inventory_hostname == groups['ydb_cluster'][0]"
 
 - name: "Create ca_crt"
@@ -40,8 +40,8 @@
     selfsigned_not_before: '202502010000Z'
     selfsigned_not_after: '202602010000Z'
     mode: '0644'
-    owner: ydb
-    group: ydb
+    owner: "{{ ydb_settings.app_user }}"
+    group: "{{ ydb_settings.app_group }}"
   when: "inventory_hostname == groups['ydb_cluster'][0]"
 
 - name: "Get ca and ca.key"
@@ -59,8 +59,8 @@
     src: /tmp/{{ item }}
     dest: "{{ work_dirs.certs }}/{{ item }}"
     mode: "{{ '0600' if item == 'ca.key' else '0644' }}"
-    owner: ydb
-    group: ydb
+    owner: "{{ ydb_settings.app_user }}"
+    group: "{{ ydb_settings.app_group }}"
   loop:
     - "ca.crt"
     - "ca.key"
@@ -71,8 +71,8 @@
     size: 2048
     type: RSA
     mode: "0600"
-    owner: ydb
-    group: ydb
+    owner: "{{ ydb_settings.app_user }}"
+    group: "{{ ydb_settings.app_group }}"
 
 - name: "Create CSR client request"
   openssl_csr:
@@ -93,8 +93,8 @@
       - "DNS:{{ ansible_hostname }}"
     digest: sha256
     mode: "0600"
-    owner: ydb
-    group: ydb
+    owner: "{{ ydb_settings.app_user }}"
+    group: "{{ ydb_settings.app_group }}"
 
 - name: "Signing client certificates"
   openssl_certificate:
@@ -106,8 +106,8 @@
     ownca_not_before: '202502010000Z'
     ownca_not_after: '202602010000Z'
     mode: "0644"
-    owner: ydb
-    group: ydb
+    owner: "{{ ydb_settings.app_user }}"
+    group: "{{ ydb_settings.app_group }}"
 
 - name: "Read privat key"
   slurp:
@@ -132,5 +132,5 @@
       {{ host_cert.content | b64decode }}
       {{ ca_cert.content | b64decode }}
     mode: "0600"
-    owner: ydb
-    group: ydb
+    owner: "{{ ydb_settings.app_user }}"
+    group: "{{ ydb_settings.app_group }}"

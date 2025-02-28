@@ -1,0 +1,14 @@
+---
+- name: "Create group"
+  group:
+    name: "{{ ydb_settings.app_group }}"
+    state: present
+
+- name: "Create user"
+  user:
+    name: "{{ ydb_settings.app_user }}"
+    shell: "/sbin/nologin"
+    group: "{{ ydb_settings.app_group }}"
+    groups: disk
+    createhome: false
+    comment: "User for ydb-cluster"

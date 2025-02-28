@@ -1,15 +1,6 @@
 ---
-- name: "Create group"
-  group:
-    name: "ydb"
-    state: present
-
-- name: "Create user"
-  user:
-    name: "ydb"
-    state: present
-    group: ydb
-    groups: disk
+- name: "Create user and group"
+  import_tasks: "initial.yml"
 
 - name: "Install packages"
   dnf:
@@ -23,8 +14,8 @@
   file:
     path: "{{ item.value }}"
     state: directory
-    owner: "ydb"
-    group: "ydb"
+    owner: "{{ ydb_settings.app_user }}"
+    group: "{{ ydb_settings.app_group }}"
   with_dict: "{{ work_dirs }}"
 
 - name: "Create cert chain"
@@ -33,8 +24,8 @@
 - name: "Change owner"
   file:
     path: "{{ work_dirs.certs }}"
-    owner: "ydb"
-    group: "ydb"
+    owner: "{{ ydb_settings.app_user }}"
+    group: "{{ ydb_settings.app_group }}"
     mode: '0700'
 
 - name: "Download apps"
@@ -74,8 +65,8 @@
   template: 
     src: "config.yaml.j2"
     dest: "{{ work_dirs.config }}/config.yaml"
-    owner: ydb
-    group: ydb
+    owner: "{{ ydb_settings.app_user }}"
+    group: "{{ ydb_settings.app_group }}"
 
 - name: "Copy service"
   template:

@@ -10,6 +10,8 @@ ydb_settings:
       name_partition: "ydb_disk_ssd_03" # произвольное название уникальное в рамках одной ноды
   name_db: 'newdb2'
   root_password: "123456!@"
+  app_user: "ydb"
+  app_group: "ydb"
 
 ydb_cli_settings:
   version: "2.19.0"
@@ -38,5 +40,7 @@ work_dirs:
   log_dir: "/var/log/ydb"
 
 app_list:
-  - { name: "ydb_cli", url: "https://storage.yandexcloud.net/yandexcloud-ydb/release/{{ ydb_cli_settings.version }}/linux/amd64/ydb" }
-  - { name: "ydb_server", url: "https://binaries.ydb.tech/release/{{ ydb_settings.version }}/ydbd-{{ ydb_settings.version }}-linux-amd64.tar.gz" }
+  - name: "ydb_cli"
+    url: "https://storage.yandexcloud.net/yandexcloud-ydb/release/{{ ydb_cli_settings.version }}/linux/amd64/ydb"
+  - name: "ydb_server" 
+    url: "https://binaries.ydb.tech/release/{{ ydb_settings.version }}/ydbd-{{ ydb_settings.version }}-linux-amd64.tar.gz"
